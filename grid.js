@@ -116,43 +116,31 @@ Grid.prototype.moveCell = function(startPos, dir) {
     this.lastMerged = this.mergeMove
 }
 
-Grid.prototype.moveBlock = function(b, dir) {
-    this.lastMerged = false
-    switch(dir) {
-        case 'u': {
-            let c = b
-            for(let r = 0; r < this.size; r++) {
-                this.moveCell({r:r, c:c}, dir)
+Grid.prototype.slideLine = function(l) {
+    let lastMerged = false
+    for (let s = 1; s < 4; s++) {
+        for (let i = s; i > 0; i--) {
+            if (l[i-1] == 0) {
+                l[i-1] = l[i]
+                l[i] = 0
+                continue
             }
-            break;
-        }
-        case 'd': {
-            let c = b
-            for(let r = this.size-1; r >= 0; r--) {
-                this.moveCell({r:r, c:c}, dir)
-            }
-            break;
-        }
-        case 'l': {
-            let r = b
-            for(let c = 0; c < this.size; c++) {
-                this.moveCell({r:r, c:c}, dir)
-            }
-            break;
-        }
-        case 'r': {
-            let r = b
-            for(let c = this.size-1; c >= 0; c--) {
-                this.moveCell({r:r, c:c}, dir)
+            if (l[i-1] == l[i] && !lastMerged) {
+                l[i-1] *= 2
+                l[i] = 0
+                lastMerged = true
+            } else {
+                lastMerged = false
             }
             break;
         }
     }
+    return l
 }
 
 Grid.prototype.moveGrid = function(dir) {
     for (let b = 0; b < this.size; b++) {
-        this.moveBlock(b, dir)
+        this.slideLine(b, dir)
     }
 }
 
@@ -214,6 +202,35 @@ function deepCopy(cells) {
 
 // Tests
 
+function arrEquals(arr1, arr2) {
+    if (arr1.length != arr2.length) {
+        return false
+    }
+    for (let i = 0; i < arr1.length; i++) {
+        if (arr1[i] != arr2[i]) {
+            return false
+        }
+    }
+    return true
+}
+function testSlideLine() {
+    let grid = new Grid(
+        4, null
+    )
+    let line = grid.slideLine([2,2,2,2])
+    let expected = [4,4,0,0]
+    console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
+    line = grid.slideLine([2,0,4,4])
+    expected = [2,8,0,0]
+    console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
+    line = grid.slideLine([2,0,0,2])
+    expected = [4,0,0,0]
+    console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
+    line = grid.slideLine([2,4,2,0])
+    expected = [2,4,2,0]
+    console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
+}
+
 function testMoveCell() {
     let grid = new Grid(
         4, [[2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0]]
@@ -249,7 +266,7 @@ function testMoveBlock() {
     )
     
     let dir = 'u'
-    grid.moveBlock(0, dir)
+    grid.slideLine(0, dir)
     let expected = [[4, 0, 0, 0], [8, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
     console.assert(grid.equals(expected), `dir: ${dir} expected: ${expected} actual: ${grid.cells}`)
     console.log("testMoveBlock success")
@@ -298,6 +315,7 @@ function testPrintCells() {
     grid.printCells()
 }
 
+testSlideLine()
 // testMoveCell()
 // testMoveBlock()
 // testMoveGrid()
