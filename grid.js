@@ -1,12 +1,4 @@
-function randomInt(max) {
-   return Math.floor(Math.random()*max) 
-}
-
-function Grid(size, cells) {
-    this.size = size
-    if (this.size == null) 
-        this.size = 4
-
+function Grid(cells = null) {
     this.dirs = ['u', 'd', 'l', 'r']
     this.cells = cells
     if (this.cells == null) {
@@ -15,192 +7,117 @@ function Grid(size, cells) {
 }
 
 Grid.prototype.resetCells = function() {
-    this.cells = this.empty()
-    this.addStartTiles()
+    this.cells = Array(4).fill(0).map(() => Array(4).fill(0))
+    this.addRandomTile()
+    this.addRandomTile()
 }
 
 Grid.prototype.addRandomTile = function() {
     emptyCells = []
-    for (let r = 0; r < this.size; r++) {
-        for (let c = 0; c < this.size; c++) {
-            let pos = {r:r, c:c}
-            if (this.cellValue(pos) == 0) {
-                emptyCells.push(pos)
+    for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+            if (this.cells[r][c] == 0) {
+                emptyCells.push({r, c})
             }
         }
     }
 
-    let idx = randomInt(emptyCells.length)
-    let targetPos = emptyCells[idx]
-    this.setCellValue(targetPos, Math.random() < 0.9 ? 2:4)
-}
-
-Grid.prototype.addStartTiles = function() {
-    for (let i = 0; i < 2; i++) {
-        this.addRandomTile()
+    if (emptyCells.length > 0) {
+        let {r, c} = emptyCells[Math.floor(Math.random()*emptyCells.length)]
+        this.cells[r][c] = Math.random() < 0.9 ? 2 : 4
     }
 }
 
-Grid.prototype.empty = function() {
-    cells = []
-    for (r = 0; r < this.size; r++) {
-        cells[r] = []
-        for (c = 0; c < this.size; c++) {
-            cells[r][c] = 0
+Grid.prototype.slideLine = function(l) {
+    let arr = l.filter(x => x != 0)
+    let newLine = []
+    for (let i = 0; i < arr.length; i++) {
+        if (i < arr.length-1 && arr[i] == arr[i+1]) {
+            newLine.push(arr[i]*2)
+            i++
+        } else {
+            newLine.push(arr[i])
         }
+    }
+
+    while (newLine.length < 4) {
+        newLine.push(0)
+    }
+    return newLine
+}
+
+Grid.prototype.slideGrid = function (dir) {
+    let cells = this.cells.map(row => row.slice())
+    switch(dir)  {
+        case "l":
+            for (let i = 0; i < 4; i++) {
+                cells[i] = this.slideLine(cells[i])
+            }
+            break;
+        case "r":
+            for (let i = 0; i < 4; i++) {
+                cells[i] = this.slideLine(cells[i].reverse()).reverse()
+            }
+            break;
+        case "u":
+            for (let c = 0; c < 4; c++) {
+                let col = []
+                for (let r = 0; r < 4; r++) {
+                    col.push(cells[r][c])
+                }
+                col = this.slideLine(col)
+                for (let r = 0; r < 4; r++) {
+                    cells[r][c] = col[r]
+                }
+            }
+            break;
+        case "d":
+            for (let c = 0; c < 4; c++) {
+                let col = []
+                for (let r = 0; r < 4; r++) {
+                    col.push(cells[r][c])
+                }
+                col = this.slideLine(col.reverse()).reverse()
+                for (let r = 0; r < 4; r++) {
+                    cells[r][c] = col[r]
+                }
+            }
+            break;
     }
     return cells
 }
 
-Grid.prototype.targetCellValue = function(cells, pos) {
-    if (this.OOB(pos)) {
-        console.log("Err OOB:", pos)
-        return
-    }
-    return cells[pos.r][pos.c]
-}
-
-Grid.prototype.cellValue = function(pos) {
-    return this.targetCellValue(this.cells, pos)
-}
-
-
-Grid.prototype.setTargetCellValue = function(cells, pos, val) {
-    if (this.OOB(pos)) {
-        console.log("Err OOB:", pos)
-        return
-    }
-    cells[pos.r][pos.c] = val
-}
-
-Grid.prototype.setCellValue = function(pos, val) {
-    this.setTargetCellValue(this.cells, pos, val)
-}
-
-Grid.prototype.stepPos = function(oldPos, dir) {
-    let v = this.getVector(dir)
-    let newPos = { r: oldPos.r + v.r, c: oldPos.c + v.c}
-    return newPos
-}
-
-Grid.prototype.cellStep = function(oldPos, dir) {
-    let newPos = this.stepPos(oldPos, dir)
-
-    if (this.OOB(newPos)) {
-        // console.log("OOB:", newPos)
-        return false
-    }
-
-    if (this.cellValue(newPos) == 0) {
-        this.setCellValue(newPos, this.cellValue(oldPos))
-        this.setCellValue(oldPos, 0)
-        return true
-    }
-
-    if (this.cellValue(newPos) == this.cellValue(oldPos) && !this.lastMerged) { 
-        this.setCellValue(newPos, this.cellValue(newPos)*2)
-        this.setCellValue(oldPos, 0)
-        this.mergeMove = true
-        return false
-    }
-
-    return false
-}
-
-Grid.prototype.moveCell = function(startPos, dir) {
-    let pos = startPos
-    this.mergeMove = false
-    while(this.cellStep(pos, dir)) {
-        pos = this.stepPos(pos, dir)
-    }
-    this.lastMerged = this.mergeMove
-}
-
-Grid.prototype.slideLine = function(l) {
-    let lastMerged = false
-    for (let s = 1; s < 4; s++) {
-        for (let i = s; i > 0; i--) {
-            if (l[i-1] == 0) {
-                l[i-1] = l[i]
-                l[i] = 0
-                continue
-            }
-            if (l[i-1] == l[i] && !lastMerged) {
-                l[i-1] *= 2
-                l[i] = 0
-                lastMerged = true
-            } else {
-                lastMerged = false
-            }
-            break;
-        }
-    }
-    return l
-}
-
-Grid.prototype.moveGrid = function(dir) {
-    for (let b = 0; b < this.size; b++) {
-        this.slideLine(b, dir)
-    }
-}
 
 Grid.prototype.executeMove = function (dir) {
-    let cellsDeepCopy = deepCopy(this.cells)
-    this.moveGrid(dir)
+    let cells = this.slideGrid(dir)
 
-    if (!this.equals(cellsDeepCopy)) {
+    if (!arr2DEquals(cells, this.cells)) {
+        this.cells = cells
         this.addRandomTile()
     }
 }
 
-Grid.prototype.availableMoves = function() {
-    availableMoves = []
-    let cellsDeepCopy = deepCopy(this.cells)
+Grid.prototype.isMoveAvailable = function () {
     for (let dir of this.dirs) {
-        this.moveGrid(dir)
-
-        if (!this.equals(cellsDeepCopy)) {
-            availableMoves.push(dir)
-            this.cells = deepCopy(cellsDeepCopy)
+        let newCells = this.slideGrid(dir)
+        if (!arr2DEquals(newCells, this.cells)) {
+            return true
         }
     }
-    return availableMoves
+    return false
 }
 
-Grid.prototype.getVector = function(dir) {
-    let map = {
-        'u': { r: -1, c: 0},
-        'd': { r: 1, c: 0},
-        'l': { r: 0, c: -1},
-        'r': { r: 0, c: 1}
-    }
-    return map[dir]
-}
-
-Grid.prototype.OOB = function(pos) {
-    return pos.r < 0 || pos.c < 0 || pos.r >= this.size || pos.c >= this.size
-}
-
-Grid.prototype.equals = function (cells) {
-    for (let r = 0; r < this.size; r++) {
-        for (let c = 0; c < this.size; c++) {
-            if (this.cells[r][c] != cells[r][c]) {
-                return false
+Grid.prototype.has2048 = function () {
+    for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 4; c++) {
+            if (this.cells[r][c] == 2048) {
+                return true
             }
         }
     }
-    return true
-}
 
-Grid.prototype.printCells = function() {
-    console.log("[ " + this.cells.map(x => x.join(", ")).join(" ]\n[ ") + " ]")
+    return false
 }
-
-function deepCopy(cells) {
-    return JSON.parse(JSON.stringify(cells))
-}
-
-// Tests
 
 function arrEquals(arr1, arr2) {
     if (arr1.length != arr2.length) {
@@ -213,111 +130,120 @@ function arrEquals(arr1, arr2) {
     }
     return true
 }
+function arr2DEquals(arr1, arr2) {
+    if (arr1.length !== arr2.length) {
+        return false;
+    }
+    for (let i = 0; i < arr1.length; i++) {
+        if (!arrEquals(arr1[i], arr2[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+function stringify2DArray(array) {
+    return "\n" + array.map(row => row.join(' ')).join('\n') + "\n";
+}
+
+
+// Tests
+
 function testSlideLine() {
-    let grid = new Grid(
-        4, null
-    )
+    let grid = new Grid()
+
     let line = grid.slideLine([2,2,2,2])
     let expected = [4,4,0,0]
     console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
+
     line = grid.slideLine([2,0,4,4])
     expected = [2,8,0,0]
     console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
+
     line = grid.slideLine([2,0,0,2])
     expected = [4,0,0,0]
     console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
+
     line = grid.slideLine([2,4,2,0])
     expected = [2,4,2,0]
     console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
-}
 
-function testMoveCell() {
-    let grid = new Grid(
-        4, [[2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0]]
-    )
-
-    grid.lastMerged = false
-    let dir = 'u'
-    grid.moveCell({r:0, c:0}, dir)
-    let expected = [[2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0]]
-    console.assert(grid.equals(expected), `dir: ${dir} expected: ${expected} actual: ${grid.cells}`)
-
-    dir = 'u'
-    grid.moveCell({r:1, c:0}, dir)
-    expected = [[4, 0, 0, 0], [0, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0]]
-    console.assert(grid.equals(expected), `dir: ${dir} expected: ${expected} actual: ${grid.cells}`)
-
-    dir = 'u'
-    grid.moveCell({r:2, c:0}, dir)
-    expected = [[4, 0, 0, 0], [2, 0, 0, 0], [0, 0, 0, 0], [2, 0, 0, 0]]
-    console.assert(grid.equals(expected), `dir: ${dir} expected: ${expected} actual: ${grid.cells}`)
-
-    dir = 'u'
-    grid.moveCell({r:3, c:0}, dir)
-    expected = [[4, 0, 0, 0], [4, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-    console.assert(grid.equals(expected), `dir: ${dir} expected: ${expected} actual: ${grid.cells}`)
-
-    console.log("testMoveCell success")
-}
-
-function testMoveBlock() {
-    let grid = new Grid(
-        4, [[2, 0, 0, 0], [2, 0, 0, 0], [4, 0, 0, 0], [4, 0, 0, 0]]
-    )
-    
-    let dir = 'u'
-    grid.slideLine(0, dir)
-    let expected = [[4, 0, 0, 0], [8, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-    console.assert(grid.equals(expected), `dir: ${dir} expected: ${expected} actual: ${grid.cells}`)
-    console.log("testMoveBlock success")
+    line = grid.slideLine([0,0,0,2])
+    expected = [2,0,0,0]
+    console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
 }
 
 
-function testMoveGrid() {
-    let grid = new Grid(
-        4, [[2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0]]
-    )
-    cellsDeepCopy = deepCopy(grid.cells)
-    let dir = 'u'
-    grid.moveGrid(dir)
-    
-    let expected = [[4, 0, 0, 0], [4, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
-    console.assert(grid.equals(expected), `failed dir: ${dir} expected: ${expected} actual: ${grid.cells}`)
+function testSlideGrid() {
+    let grid, cells, expected;
 
-    grid.cells = deepCopy(cellsDeepCopy)
-    dir = 'd'
-    grid.moveGrid(dir)
+    grid = new Grid([
+        [2, 2, 0, 2],
+        [2, 2, 2, 2],
+        [4, 0, 0, 4],
+        [8, 8, 8, 8]
+    ]);
 
-    expected = [[0, 0, 0, 0], [0, 0, 0, 0], [4, 0, 0, 0], [4, 0, 0, 0]]
-    console.assert(grid.equals(expected), `failed dir: ${dir} expected: ${expected} actual: ${grid.cells}`)
+    // Test case 1: Slide left
+    cells = grid.slideGrid('l');
+    expected = [
+        [4, 2, 0, 0],
+        [4, 4, 0, 0],
+        [8, 0, 0, 0],
+        [16, 16, 0, 0]
+    ];
+    console.assert(arr2DEquals(cells, expected), `Test case 1 failed. cells:${JSON.stringify(cells)} expected:${JSON.stringify(expected)}`);
 
-    grid.cells = deepCopy(cellsDeepCopy)
-    dir = 'l'
-    grid.moveGrid(dir)
+    // Test case 2: Slide right
+    cells = grid.slideGrid('r');
+    expected = [
+        [0, 0, 2, 4],
+        [0, 0, 4, 4],
+        [0, 0, 0, 8],
+        [0, 0, 16, 16]
+    ];
+    console.assert(arr2DEquals(cells, expected), `Test case 2 failed. cells:${JSON.stringify(cells)} expected:${JSON.stringify(expected)}`);
 
-    expected = [[2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0]]
-    console.assert(grid.equals(expected), `failed dir: ${dir} expected: ${expected} actual: ${grid.cells}`)
+    // Test case 3: Slide up
+    cells = grid.slideGrid('u');
+    expected = [
+        [4, 4, 2, 4],
+        [4, 8, 8, 4],
+        [8, 0, 0, 8],
+        [0, 0, 0, 0]
+    ];
+    console.assert(arr2DEquals(cells, expected), `Test case 3 failed. cells:${JSON.stringify(cells)} expected:${JSON.stringify(expected)}`);
 
-    grid.cells = deepCopy(cellsDeepCopy)
-    dir = 'r'
-    grid.moveGrid(dir)
-
-    expected = [[0, 0, 0, 2], [0, 0, 0, 2], [0, 0, 0, 2], [0, 0, 0, 2]]
-    console.assert(grid.equals(expected), `failed dir: ${dir} expected: ${expected} actual: ${grid.cells}`)
-
-    console.log("testmoveGrid success")
+    // Test case 4: Slide down
+    cells = grid.slideGrid('d');
+    expected = [
+        [0, 0, 0, 0],
+        [4, 0, 0, 4],
+        [4, 4, 2, 4],
+        [8, 8, 8, 8]
+    ];
+    console.assert(arr2DEquals(cells, expected), `Test case 4 failed. cells:${JSON.stringify(cells)} expected:${JSON.stringify(expected)}`);
 }
 
-function testPrintCells() {
-    let grid = new Grid(
-        4, [[16, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0], [2, 0, 0, 0]]
-    )
-    grid.printCells()
+function testIsMoveAvailable() {
+    let grid, res;
+
+    grid = new Grid([
+        [2, 4, 2, 4],
+        [4, 2, 4, 2],
+        [2, 4, 2, 4],
+        [4, 2, 4, 2]
+    ]);
+
+    // Test case 1: Slide left
+    res = grid.isMoveAvailable()
+    console.assert(res == false, `Test case failed. cells:${stringify2DArray(grid.cells)} res: ${res}`);
+
 }
 
 testSlideLine()
-// testMoveCell()
-// testMoveBlock()
-// testMoveGrid()
-// testPrintCells()
+testSlideGrid()
+testIsMoveAvailable()
+
+
+
 
