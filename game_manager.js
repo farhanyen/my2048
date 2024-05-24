@@ -1,3 +1,5 @@
+const { Grid} = require('./grid');
+
 function GameManager() {
     this.grid = new Grid()
     this.inputManager = new KeyboardInputManager()
@@ -17,11 +19,9 @@ GameManager.prototype.move = function(dir) {
 
     this.grid.executeMove(dir)
     this.grid.printCells()
-    console.log(this.grid.availableMoves())
-    if (!this.grid.availableMoves().length) {
+    if (!this.grid.isMoveAvailable()) {
         console.log("game over")
         this.gameOver = true
-        this.gameResult = loss
     }
 }
 

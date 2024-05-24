@@ -13,7 +13,7 @@ Grid.prototype.resetCells = function() {
 }
 
 Grid.prototype.addRandomTile = function() {
-    emptyCells = []
+    let emptyCells = []
     for (let r = 0; r < 4; r++) {
         for (let c = 0; c < 4; c++) {
             if (this.cells[r][c] == 0) {
@@ -119,6 +119,10 @@ Grid.prototype.has2048 = function () {
     return false
 }
 
+Grid.prototype.printCells = function() {
+    console.log(stringify2DArray(this.cells))
+}
+
 function arrEquals(arr1, arr2) {
     if (arr1.length != arr2.length) {
         return false
@@ -145,105 +149,9 @@ function stringify2DArray(array) {
     return "\n" + array.map(row => row.join(' ')).join('\n') + "\n";
 }
 
-
-// Tests
-
-function testSlideLine() {
-    let grid = new Grid()
-
-    let line = grid.slideLine([2,2,2,2])
-    let expected = [4,4,0,0]
-    console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
-
-    line = grid.slideLine([2,0,4,4])
-    expected = [2,8,0,0]
-    console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
-
-    line = grid.slideLine([2,0,0,2])
-    expected = [4,0,0,0]
-    console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
-
-    line = grid.slideLine([2,4,2,0])
-    expected = [2,4,2,0]
-    console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
-
-    line = grid.slideLine([0,0,0,2])
-    expected = [2,0,0,0]
-    console.assert(arrEquals(line,expected), `line:${line} expected:${expected}`)
-}
-
-
-function testSlideGrid() {
-    let grid, cells, expected;
-
-    grid = new Grid([
-        [2, 2, 0, 2],
-        [2, 2, 2, 2],
-        [4, 0, 0, 4],
-        [8, 8, 8, 8]
-    ]);
-
-    // Test case 1: Slide left
-    cells = grid.slideGrid('l');
-    expected = [
-        [4, 2, 0, 0],
-        [4, 4, 0, 0],
-        [8, 0, 0, 0],
-        [16, 16, 0, 0]
-    ];
-    console.assert(arr2DEquals(cells, expected), `Test case 1 failed. cells:${JSON.stringify(cells)} expected:${JSON.stringify(expected)}`);
-
-    // Test case 2: Slide right
-    cells = grid.slideGrid('r');
-    expected = [
-        [0, 0, 2, 4],
-        [0, 0, 4, 4],
-        [0, 0, 0, 8],
-        [0, 0, 16, 16]
-    ];
-    console.assert(arr2DEquals(cells, expected), `Test case 2 failed. cells:${JSON.stringify(cells)} expected:${JSON.stringify(expected)}`);
-
-    // Test case 3: Slide up
-    cells = grid.slideGrid('u');
-    expected = [
-        [4, 4, 2, 4],
-        [4, 8, 8, 4],
-        [8, 0, 0, 8],
-        [0, 0, 0, 0]
-    ];
-    console.assert(arr2DEquals(cells, expected), `Test case 3 failed. cells:${JSON.stringify(cells)} expected:${JSON.stringify(expected)}`);
-
-    // Test case 4: Slide down
-    cells = grid.slideGrid('d');
-    expected = [
-        [0, 0, 0, 0],
-        [4, 0, 0, 4],
-        [4, 4, 2, 4],
-        [8, 8, 8, 8]
-    ];
-    console.assert(arr2DEquals(cells, expected), `Test case 4 failed. cells:${JSON.stringify(cells)} expected:${JSON.stringify(expected)}`);
-}
-
-function testIsMoveAvailable() {
-    let grid, res;
-
-    grid = new Grid([
-        [2, 4, 2, 4],
-        [4, 2, 4, 2],
-        [2, 4, 2, 4],
-        [4, 2, 4, 2]
-    ]);
-
-    // Test case 1: Slide left
-    res = grid.isMoveAvailable()
-    console.assert(res == false, `Test case failed. cells:${stringify2DArray(grid.cells)} res: ${res}`);
-
-}
-
-testSlideLine()
-testSlideGrid()
-testIsMoveAvailable()
-
-
-
-
+module.exports = {
+    Grid,
+    arrEquals,
+    arr2DEquals,
+    stringify2DArray
+};
